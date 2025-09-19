@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Validasi 6 Baris Kekanan — Generator Tampilan</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{background:#f7fafc;color:#111;padding:18px}
+    textarea{width:100%;height:160px;font-family:monospace;padding:10px;border:1px solid #ccc;border-radius:6px}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+    button{background:#0366d6;color:white;border:none;padding:8px 12px;border-radius:6px;cursor:pointer}
+    button.secondary{background:#6b7280}
+    .grid{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    .cell{min-width:64px;padding:6px 8px;border-radius:6px;background:#fff;border:1px solid #e5e7eb;text-align:center;box-shadow:0 1px 0 rgba(0,0,0,0.03)}
+    .invalid{background:#ffecee;border-color:#ff8a8a;color:#991b1b}
+    .right-aligned{justify-content:flex-end}
+    .right-aligned .cell{text-align:right}
+    .download{margin-left:auto}
+    .summary{margin-top:10px;font-size:14px;color:#374151}
+    label.small{font-size:13px;color:#374151}
+  </style>
+</head>
+<body>
+  <h1>Validasi & Tampilkan — 6 Baris Kekanan, Sisa Menurun</h1>
+  <p>Paste daftar kode (dipisah tanda <code>*</code>, koma, atau newline). Fungsi:
+  <ul>
+    <li>Validasi: setiap entri harus 4 digit (0-9). Entri tidak valid diberi warna merah.</li>
+    <li>Tampilan: dibagi per baris (jumlah per baris bisa diset). Baris 1–6 diberi rata kanan (kekanan).</li>
+    <li>Baris setelah 6: setiap baris diurutkan menurun (descending) secara numerik.</li>
+  </ul>
+  </p>
+
+  <textarea id="input" placeholder="Masukkan kode di sini..."></textarea>
+
+  <div class="controls">
+    <label class="small">Items per baris: 
+      <input id="perRow" type="number" min="1" value="10" style="width:72px;padding:4px;border-radius:4px;border:1px solid #cbd5e1"/>
+    </label>
+    <button id="renderBtn">Render & Validasi</button>
+    <button id="resetBtn" class="secondary">Reset Input</button>
+    <button id="downloadBtn" class="download">Download HTML</button>
+    <button id="downloadTxtBtn" class="secondary">Download TXT</button>
+  </div>
+
+  <div class="summary" id="summary"></div>
+  <div class="grid" id="output"></div>
+
+<script>
+  const inputEl = document.getElementById('input');
+  const out = document.getElementById('output');
+  const summary = document.getElementById('summary');
+  const perRow = document.getElementById('perRow');
+
+  function parseInput(text){
+    return text.split(/[* ,;\n\r]+/).map(s=>s.trim()).filter(Boolean);
+  }
+
+  function isValidCode(s){
+    return /^\d{4}$/.test(s);
+  }
+
+  function numericCompareDesc(a,b){
+    const na = parseInt(a,10);
+    const nb = parseInt(b,10);
+    if(isNaN(na) || isNaN(nb)) return b.localeCompare(a);
+    return nb - na;
+  }
+
+  function render(){
+    out.innerHTML='';
+    const items = parseInput(inputEl.value);
+    if(items.length===0){summary.textContent='Tidak ada item.';return}
+    const per = Math.max(1,parseInt(perRow.value)||10);
+    const rows = [];
+    for(let i=0;i<items.length;i+=per) rows.push(items.slice(i,i+per));
+
+    let invalidCount=0;
+    rows.forEach((rowArr, idx)=>{
+      const rowDiv = document.createElement('div');
+      rowDiv.className='row';
+      if(idx<6){ rowDiv.classList.add('right-aligned'); }
+      let displayArr = rowArr.slice();
+      if(idx>=6){ displayArr.sort(numericCompareDesc); }
+
+      displayArr.forEach(item=>{
+        const cell = document.createElement('div');
+        cell.className='cell';
+        if(!isValidCode(item)){
+          cell.classList.add('invalid');
+          invalidCount++;
+        }
+        cell.textContent = item;
+        rowDiv.appendChild(cell);
+      });
+      out.appendChild(rowDiv);
+    });
+
+    summary.textContent = `Total items: ${items.length} — Baris: ${rows.length} — Invalid: ${invalidCount}`;
+  }
+
+  document.getElementById('renderBtn').addEventListener('click', render);
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    inputEl.value=''; render();
+  });
+
+  document.getElementById('downloadBtn').addEventListener('click', ()=>{
+    const content = document.documentElement.outerHTML;
+    const blob = new Blob([content],{type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'validasi_6baris_kekanan.html';
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  });
+
+  // Download as TXT (hanya isi hasil validasi dalam grid)
+  document.getElementById('downloadTxtBtn').addEventListener('click', ()=>{
+    let textOutput = '';
+    const rows = out.querySelectorAll('.row');
+    rows.forEach((row, idx)=>{
+      const cells = Array.from(row.querySelectorAll('.cell')).map(c=>c.textContent);
+      textOutput += `Baris ${idx+1}: ` + cells.join('*') + '\n';
+    });
+    const blob = new Blob([textOutput],{type:'text/plain'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'validasi_6baris_kekanan.txt';
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  });
+
+  render();
+</script>
+</body>
+</html>
